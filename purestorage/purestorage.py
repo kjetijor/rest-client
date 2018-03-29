@@ -92,7 +92,7 @@ class FlashArray(object):
 
     def __init__(self, target, username=None, password=None, api_token=None,
                  rest_version=None, verify_https=False, ssl_cert=None,
-                 user_agent=None):
+                 user_agent=None, proxies={}):
 
         if not api_token and not (username and password):
             raise ValueError(
@@ -103,6 +103,7 @@ class FlashArray(object):
 
         self._cookies = {}
         self._target = target
+        self._proxies = proxies
 
         self._renegotiate_rest_version = False if rest_version else True
 
@@ -140,7 +141,8 @@ class FlashArray(object):
                 verify = True
         try:
             response = requests.request(method, url, data=body, headers=headers,
-                                        cookies=self._cookies, verify=verify)
+                                        cookies=self._cookies, verify=verify,
+                                        proxies=self._proxies)
         except requests.exceptions.RequestException as err:
             # error outside scope of HTTP status codes
             # e.g. unable to resolve domain name
@@ -2495,6 +2497,20 @@ class FlashArray(object):
 
         """
         return self._request("GET", "app", kwargs)
+
+    #
+    # Monitor
+    #
+
+    def array_monitor(self, historical=None):
+        # if historical not in ['1h', '3h', '24h', '7d', '30d', '90d', '1y', None]
+        return self._request("GET", "array?action=monitor{}".format("" if historical is None else "&historical=" + historical))
+
+    def volume_monitor(self, volume=None, historical=None):
+        histspec = "" if historical is None else "&historical={}".format(historical)
+        volspec = "" if volume is None else "/{}".format(volume)
+        return self._request("GET", "volume{volspec}?action=monitor{histspec}".format(volspec=volspec, histspec=histspec))
+
 
 class ResponseList(list):
     """List type returned by FlashArray object.
